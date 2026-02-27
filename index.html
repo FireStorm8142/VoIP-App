@@ -73,6 +73,7 @@
         .btn-join { background-color: var(--success); }
         .btn-leave { background-color: var(--danger); }
         .btn-mute { background-color: #4f545c; }
+        .btn-disconnect{ background-color: red;}
         
         .chat-area {
             grid-column: 2;
@@ -141,6 +142,7 @@
         <div class="voip-controls">
             <button id="btn-mute" class="btn-mute">Mute Mic</button>
             <button id="btn-join" class="btn-join">Call</button>
+            <button id="btn-disconnect" class="btn-disconnect">Leave Chat</button>
             <button id="btn-leave" class="btn-leave" style="display:none;">Leave Voice</button>
         </div>
     </div>
@@ -166,10 +168,17 @@
     const roomList = document.getElementById('room-list');
     const chatFeed = document.getElementById('chat-feed');
     const msgInput = document.getElementById('msg-input');
+    const disconnect = document.getElementById('btn-disconnect')
 
     joinBtn.addEventListener('click', () => {
         const code = roomInput.value.trim();
         if(!code) return;
+
+        if (currentRoom) {
+            alert("Please leave your current room before joining a new one!");
+            return;
+        }
+        //temp fix for "ghost room" cases, add UI handler later for multiple rooms
 
         currentRoom = code;
         socket.emit('join-room', currentRoom);
@@ -179,6 +188,20 @@
         roomList.appendChild(roomItem);
         chatFeed.innerHTML = `<div class="message"><span class="meta">System</span><span class="content">Joined Room: ${code}</span></div>`;
         roomInput.value = '';
+    });
+
+    disconnect.addEventListener('click', () => {
+        if (!currentRoom) return;
+
+        socket.emit('leave-room', currentRoom);
+        chatFeed.innerHTML='';
+        const roomItems = document.querySelectorAll('.user-list-item');
+        roomItems.forEach(item => {
+            if (item.textContent.includes(currentRoom)) {
+                item.remove();
+            }
+        });
+        currentRoom=null;
     });
 
     msgInput.addEventListener('keypress', (e) => {

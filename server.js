@@ -36,6 +36,18 @@ io.on('connection', (socket) => {
         socket.to(room).emit('chat-message', messageData);
         socket.emit('chat-message', { ...messageData, isSelf: true });
     });
+
+    socket.on('leave-room', (roomCode) => {
+        socket.leave(roomCode);
+        console.log(`User ${socket.id} disconnected`);
+
+        socket.to(roomCode).emit('chat-message', {
+            sender: 'System',
+            text: `User ${socket.id} has left`,
+            room: roomCode,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        });
+    });
 });
 
 const PORT = process.env.PORT || 3000;
