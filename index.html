@@ -22,11 +22,10 @@
             color: var(--text-main);
             height: 100vh;
             display: grid;
-            grid-template-columns: 240px 1fr; /* Sidebar | Main Content */
-            grid-template-rows: 60px 1fr 80px; /* Header | Chat | Input */
+            grid-template-columns: 240px 1fr;
+            grid-template-rows: 60px 1fr 80px;
         }
 
-        /* --- 1. SIDEBAR (Users/Rooms) --- */
         .sidebar {
             grid-row: 1 / 4;
             background-color: var(--bg-panel);
@@ -50,7 +49,6 @@
         }
         .status-dot.online { background-color: var(--success); }
 
-        /* --- 2. HEADER (VoIP Controls) --- */
         .header {
             grid-column: 2;
             background-color: var(--bg-chat);
@@ -76,7 +74,6 @@
         .btn-leave { background-color: var(--danger); }
         .btn-mute { background-color: #4f545c; }
         
-        /* --- 3. CHAT AREA --- */
         .chat-area {
             grid-column: 2;
             background-color: var(--bg-chat);
@@ -99,11 +96,9 @@
             max-width: 80%;
             width: fit-content;
         }
-        /* Self messages align right */
         .message.self { align-items: flex-end; }
         .message.self .content { background-color: var(--accent); color: white; }
 
-        /* --- 4. INPUT AREA --- */
         .input-area {
             grid-column: 2;
             background-color: var(--bg-chat);
@@ -122,66 +117,97 @@
             outline: none;
         }
 
-        /* --- HIDDEN AUDIO ELEMENT --- */
-        /* WebRTC stream will be attached here */
         audio { display: none; } 
     </style>
 </head>
 <body>
 
-    <div class="sidebar" id="user-list">
-        <h3 style="margin-top:0; color: #96989d; text-transform: uppercase; font-size: 12px;">Active Users</h3>
-        <div class="user-list-item">
-            <div class="status-dot online"></div>
-            <span>You (CS_Student)</span>
-        </div>
-        <div class="user-list-item">
-            <div class="status-dot"></div>
-            <span>Waiting for connection...</span>
-        </div>
+<div class="sidebar" style="padding: 1rem;"> <div style="padding-bottom: 1rem; border-bottom: 1px solid #202225; margin-bottom: 1rem;">
+        <input type="text" id="room-code-input" placeholder="Enter Room Code..." 
+               style="width: 100%; padding: 10px; border-radius: 4px; border: none; background: #202225; color: white; margin-bottom: 8px; box-sizing: border-box;">
+        
+        <button id="btn-join-room" 
+                style="width: 100%; padding: 8px; background: #5865F2; border: none; border-radius: 4px; color: white; cursor: pointer; box-sizing: border-box;">
+            Join Room
+        </button>
     </div>
 
+    <h3 style="margin-top:0; color: #96989d; text-transform: uppercase; font-size: 12px;">Active Rooms</h3>
+    <div id="room-list"></div>
+</div>
+
     <div class="header">
-        <h2 style="font-size: 16px;"># General-Voice</h2>
+        <h2 style="font-size: 16px;"># General-Chat</h2>
         <div class="voip-controls">
             <button id="btn-mute" class="btn-mute">Mute Mic</button>
-            <button id="btn-join" class="btn-join">Join Voice</button>
+            <button id="btn-join" class="btn-join">Call</button>
             <button id="btn-leave" class="btn-leave" style="display:none;">Leave Voice</button>
         </div>
     </div>
 
     <div class="chat-area" id="chat-feed">
-        <div class="message">
-            <span class="meta">System • 12:00 PM</span>
-            <span class="content">Welcome to the signaling server test.</span>
-        </div>
+        
     </div>
 
     <div class="input-area">
-        <input type="text" id="msg-input" placeholder="Message #General-Voice" autocomplete="off">
+        <input type="text" id="msg-input" placeholder="Message #General-Chat" autocomplete="off">
     </div>
 
     <div id="audio-container"></div>
 
+    
+    <script src="/socket.io/socket.io.js"></script>
     <script>
-        // --- TODO: YOUR BACKEND LOGIC GOES HERE ---
-        
-        // 1. WebSocket Connection
-        // const socket = new WebSocket('ws://localhost:8080');
+    const socket = io();
+    
+    let currentRoom = null; 
+    const roomInput = document.getElementById('room-code-input');
+    const joinBtn = document.getElementById('btn-join-room');
+    const roomList = document.getElementById('room-list');
+    const chatFeed = document.getElementById('chat-feed');
+    const msgInput = document.getElementById('msg-input');
 
-        // 2. UI Event Listeners
-        document.getElementById('msg-input').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                // socket.send(...)
-                console.log("Sent:", e.target.value);
-                e.target.value = '';
+    joinBtn.addEventListener('click', () => {
+        const code = roomInput.value.trim();
+        if(!code) return;
+
+        currentRoom = code;
+        socket.emit('join-room', currentRoom);
+        const roomItem = document.createElement('div');
+        roomItem.className = 'user-list-item';
+        roomItem.innerHTML = `<div class="status-dot online"></div><span># ${code}</span>`;
+        roomList.appendChild(roomItem);
+        chatFeed.innerHTML = `<div class="message"><span class="meta">System</span><span class="content">Joined Room: ${code}</span></div>`;
+        roomInput.value = '';
+    });
+
+    msgInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && msgInput.value.trim() !== '') {
+            if (!currentRoom) {
+                alert("Please join a room first!");
+                return;
             }
-        });
+            socket.emit('send-chat', {
+                room: currentRoom,
+                message: msgInput.value
+            });
+            
+            msgInput.value = ''; 
+        }
+    });
 
-        document.getElementById('btn-join').addEventListener('click', () => {
-             console.log("Starting WebRTC negotiation...");
-             // startSignaling();
-        });
+    socket.on('chat-message', (data) => {
+        if (data.room !== currentRoom && data.sender !== 'System') return;
+
+        const messageDiv = document.createElement('div');
+        messageDiv.className = data.isSelf ? 'message self' : 'message';
+        messageDiv.innerHTML = `
+            <span class="meta">${data.sender === 'System' ? 'System' : data.sender.substring(0,5)} • ${data.time}</span>
+            <span class="content">${data.text}</span>
+        `;
+        chatFeed.appendChild(messageDiv);
+        chatFeed.scrollTop = chatFeed.scrollHeight;
+    });
     </script>
 </body>
 </html>
