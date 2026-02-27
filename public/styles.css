@@ -1,0 +1,114 @@
+:root {
+    --bg-dark: #202225;
+    --bg-panel: #2f3136;
+    --bg-chat: #36393f;
+    --text-main: #dcddde;
+    --accent: #7289da;
+    --danger: #ed4245;
+    --success: #3ba55c;
+}
+
+body {
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    height: 100vh;
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    grid-template-rows: 60px 1fr 80px;
+}
+
+.sidebar {
+    grid-row: 1 / 4;
+    background-color: var(--bg-panel);
+    padding: 1rem;
+    border-right: 1px solid #202225;
+    overflow-y: auto;
+}
+
+.user-list-item {
+    display: flex;
+    align-items: center;
+    padding: 8px;
+    margin-bottom: 4px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+.user-list-item:hover { background-color: rgba(255,255,255,0.05); }
+.status-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background-color: #747f8d; margin-right: 10px;
+}
+.status-dot.online { background-color: var(--success); }
+
+.header {
+    grid-column: 2;
+    background-color: var(--bg-chat);
+    border-bottom: 1px solid #202225;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1.5rem;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+.voip-controls button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    margin-left: 10px;
+    transition: opacity 0.2s;
+}
+.btn-join { background-color: var(--success); }
+.btn-leave { background-color: var(--danger); }
+.btn-mute { background-color: #4f545c; }
+.btn-disconnect{ background-color: red;}
+
+.chat-area {
+    grid-column: 2;
+    background-color: var(--bg-chat);
+    padding: 1rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.message {
+    display: flex;
+    flex-direction: column;
+}
+.meta { font-size: 0.75rem; color: #72767d; margin-bottom: 2px; }
+.content { 
+    background: rgba(0,0,0,0.1); 
+    padding: 8px 12px; 
+    border-radius: 4px;
+    max-width: 80%;
+    width: fit-content;
+}
+.message.self { align-items: flex-end; }
+.message.self .content { background-color: var(--accent); color: white; }
+
+.input-area {
+    grid-column: 2;
+    background-color: var(--bg-chat);
+    padding: 0 1.5rem;
+    display: flex;
+    align-items: center;
+}
+
+#msg-input {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    border: none;
+    background-color: #40444b;
+    color: white;
+    outline: none;
+}
+
+audio { display: none; } 

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoIP Chat Node</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="sidebar" style="padding: 1rem;"> <div style="padding-bottom: 1rem; border-bottom: 1px solid #202225; margin-bottom: 1rem;">
+        <input type="text" id="room-code-input" placeholder="Enter Room Code..." 
+               style="width: 100%; padding: 10px; border-radius: 4px; border: none; background: #202225; color: white; margin-bottom: 8px; box-sizing: border-box;">
+        
+        <button id="btn-join-room" 
+                style="width: 100%; padding: 8px; background: #5865F2; border: none; border-radius: 4px; color: white; cursor: pointer; box-sizing: border-box;">
+            Join Room
+        </button>
+    </div>
+
+    <h3 style="margin-top:0; color: #96989d; text-transform: uppercase; font-size: 12px;">Active Rooms</h3>
+    <div id="room-list"></div>
+</div>
+
+    <div class="header">
+        <h2 style="font-size: 16px;"># General-Chat</h2>
+        <div class="voip-controls">
+            <button id="btn-mute" class="btn-mute">Mute Mic</button>
+            <button id="btn-join" class="btn-join">Call</button>
+            <button id="btn-disconnect" class="btn-disconnect">Leave Chat</button>
+            <button id="btn-leave" class="btn-leave" style="display:none;">Leave Voice</button>
+        </div>
+    </div>
+
+    <div class="chat-area" id="chat-feed">
+        
+    </div>
+
+    <div class="input-area">
+        <input type="text" id="msg-input" placeholder="Message #General-Chat" autocomplete="off">
+    </div>
+
+    <div id="audio-container"></div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="client.js"></script>
+</body>
+</html>
