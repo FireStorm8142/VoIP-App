@@ -1,12 +1,42 @@
 const socket = io();
 
+let username='Anonymous';
 let currentRoom = null; 
+const usernameInput = document.getElementById('username-input');
+const usernameBtn = document.getElementById('btn-set-username');
+const usernameDisplay = document.getElementById('username-display');
 const roomInput = document.getElementById('room-code-input');
 const joinBtn = document.getElementById('btn-join-room');
 const roomList = document.getElementById('room-list');
 const chatFeed = document.getElementById('chat-feed');
 const msgInput = document.getElementById('msg-input');
-const disconnect = document.getElementById('btn-disconnect')
+const disconnect = document.getElementById('btn-disconnect');
+
+usernameBtn.addEventListener('click', () => {
+    const value = usernameInput.value.trim();
+    if (!value) return;
+
+    username = value;
+    usernameDisplay.textContent = `Current Username: ${username}`;
+    usernameInput.value = '';
+
+    socket.emit('set-username', username);
+});
+
+socket.on('username-change', (data) => {
+        if (!currentRoom) return;
+
+        if (data.newUsername === username) return;
+
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message';
+
+    messageDiv.innerHTML = `
+        <span class="meta">System</span>
+        <span class="content">${data.oldUsername} changed name to ${data.newUsername}</span>
+    `;
+    chatFeed.appendChild(messageDiv);
+});
 
 joinBtn.addEventListener('click', () => {
     const code = roomInput.value.trim();

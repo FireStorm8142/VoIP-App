@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
+const { Socket } = require('dgram');
 
 const app = express();
 const server = http.createServer(app);
@@ -11,13 +12,24 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 io.on('connection', (socket) => {
     console.log(`User ${socket.id} connected`);
+    socket.username='Anonymous';
+
+    socket.on('set-username', (username) => {
+        const oldUsername = socket.username;
+        socket.username = username;
+        socket.broadcast.emit('username-change', {
+            oldUsername: oldUsername,
+            newUsername: socket.username
+        });
+    });
+
     socket.on('join-room', (roomCode) => {
         socket.join(roomCode);
         console.log(`User ${socket.id} joined room: ${roomCode}`);
         //announce to everyone that a user has joined
         socket.to(roomCode).emit('chat-message', {
             sender: 'System',
-            text: `A user joined room ${roomCode}.`,
+            text: `${socket.username} has joined room ${roomCode}.`,
             room: roomCode,
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         });
@@ -26,7 +38,7 @@ io.on('connection', (socket) => {
     socket.on('send-chat', (data) => {
         const { room, message } = data;
         const messageData = {
-            sender: socket.id,
+            sender: socket.username,
             text: message,
             room: room,
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -50,7 +62,7 @@ io.on('connection', (socket) => {
 
         socket.to(roomCode).emit('chat-message', {
             sender: 'System',
-            text: `User ${socket.id} has left`,
+            text: `${socket.username} has left`,
             room: roomCode,
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         });
