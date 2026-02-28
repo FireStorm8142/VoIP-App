@@ -82,7 +82,7 @@ body {
     display: flex;
     flex-direction: column;
 }
-.meta { font-size: 0.75rem; color: #72767d; margin-bottom: 2px; }
+.meta { font-size: 0.75rem; color: #ffffff; margin-bottom: 2px; }
 .content { 
     background: rgba(0,0,0,0.1); 
     padding: 8px 12px; 
@@ -92,6 +92,8 @@ body {
 }
 .message.self { align-items: flex-end; }
 .message.self .content { background-color: var(--accent); color: white; }
+.message.system .content { background-color: black }
+.message.system .meta { color: darkcyan; font-weight: bold;}
 
 .input-area {
     grid-column: 2;

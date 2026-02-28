@@ -17,15 +17,19 @@ io.on('connection', (socket) => {
     socket.on('set-username', (username) => {
         const oldUsername = socket.username;
         socket.username = username;
-        socket.broadcast.emit('username-change', {
-            oldUsername: oldUsername,
-            newUsername: socket.username
-        });
+        for (const room of socket.rooms) {
+            if (room !== socket.id) {
+                socket.to(room).emit('username-change', {
+                    oldUsername: oldUsername,
+                    newUsername: socket.username
+                });
+            }
+        }
     });
 
     socket.on('join-room', (roomCode) => {
         socket.join(roomCode);
-        console.log(`User ${socket.id} joined room: ${roomCode}`);
+        console.log(`User ${socket.username} joined room: ${roomCode}`);
         //announce to everyone that a user has joined
         socket.to(roomCode).emit('chat-message', {
             sender: 'System',

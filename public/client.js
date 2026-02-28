@@ -24,16 +24,14 @@ usernameBtn.addEventListener('click', () => {
 });
 
 socket.on('username-change', (data) => {
-        if (!currentRoom) return;
-
-        if (data.newUsername === username) return;
+    if (!currentRoom) return;
 
     const messageDiv = document.createElement('div');
     messageDiv.className = 'message';
 
     messageDiv.innerHTML = `
-        <span class="meta">System</span>
-        <span class="content">${data.oldUsername} changed name to ${data.newUsername}</span>
+        <span class="meta" style="color: DarkCyan; font-weight: bold">System • ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+        <span class="content" style="background:black">${data.oldUsername} changed name to ${data.newUsername}</span>
     `;
     chatFeed.appendChild(messageDiv);
 });
@@ -54,7 +52,10 @@ joinBtn.addEventListener('click', () => {
     roomItem.className = 'user-list-item';
     roomItem.innerHTML = `<div class="status-dot online"></div><span># ${code}</span>`;
     roomList.appendChild(roomItem);
-    chatFeed.innerHTML = `<div class="message"><span class="meta">System</span><span class="content">Joined Room: ${code}</span></div>`;
+    chatFeed.innerHTML = `<div class="message"><span class="meta"; style="color: DarkCyan; font-weight: bold">
+    System • ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+    <span class="content" style="background:black">Joined Room: ${code}</span>
+    </div>`;
     roomInput.value = '';
 });
 
@@ -91,7 +92,11 @@ socket.on('chat-message', (data) => {
     if (data.room !== currentRoom && data.sender !== 'System') return;
 
     const messageDiv = document.createElement('div');
-    messageDiv.className = data.isSelf ? 'message self' : 'message';
+    if (data.sender === 'System') {
+        messageDiv.className = 'message system';
+    } else {
+        messageDiv.className = data.isSelf ? 'message self' : 'message';
+    }
     messageDiv.innerHTML = `
         <span class="meta">${data.sender === 'System' ? 'System' : data.sender.substring(0,5)} • ${data.time}</span>
         <span class="content">${data.text}</span>
