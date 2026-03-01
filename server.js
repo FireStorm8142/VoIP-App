@@ -54,7 +54,7 @@ io.on('connection', (socket) => {
         const { room, signalData } = data;
         // Broadcast to the other person in the room
         socket.to(room).emit('webrtc-signal', {
-            sender: socket.id,
+            sender: socket.username,
             signalData: signalData
         });
     });

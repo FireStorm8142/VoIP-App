@@ -107,7 +107,7 @@ socket.on('chat-message', (data) => {
 
 //----------webRTC-section---------//
 let localStream;
-let peerConnection;
+let peerConnection = {};
 
 const rtcConfig = {
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
@@ -136,7 +136,9 @@ async function initWebRTC() {
             remoteAudio.srcObject = event.streams[0];
             remoteAudio.autoplay = true;
             audioContainer.appendChild(remoteAudio);
-            chatFeed.innerHTML += `<div class="message"><span class="meta">System</span><span class="content" style="background: var(--success); color: white;">Audio Connected!</span></div>`;
+            chatFeed.innerHTML += `<div class="message"><span class="meta">System</span>
+            <span class="content" style="background: var(--success); color: white;">Audio Connected</span>
+            </div>`;
         }
     };
 
@@ -159,6 +161,8 @@ btnCall.addEventListener('click', async () => {
     
     await initWebRTC();
 
+    btnCall.style.display = 'none';
+    btnLeaveVoice.style.display = 'inline-block';
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
 
@@ -169,12 +173,59 @@ btnCall.addEventListener('click', async () => {
     console.log("Sent Call Offer");
 });
 
+// Muting calls
+const btnMute = document.getElementById('btn-mute');
+let isMuted = false;
+
+btnMute.addEventListener('click', () => {
+    if (!localStream) return; 
+
+    const audioTrack = localStream.getAudioTracks()[0];
+    if (audioTrack) {
+        isMuted = !isMuted;
+        audioTrack.enabled = !isMuted;
+        btnMute.textContent = isMuted ? "Unmute Mic" : "Mute Mic";
+        btnMute.style.backgroundColor = isMuted ? "#ed4245" : "#4f545c"; 
+    }
+});
+
+// Hanging up calls
+const btnLeaveVoice = document.getElementById('btn-leave');
+
+function endCall() {
+    if (peerConnection) {
+        peerConnection.close();
+        peerConnection = null;
+    }
+
+    if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+        localStream = null;
+    }
+    audioContainer.innerHTML = '';
+    btnCall.style.display = 'inline-block';
+    btnLeaveVoice.style.display = 'none';
+    btnMute.textContent = "Mute Mic";
+    btnMute.style.backgroundColor = "#4f545c";
+    isMuted = false;
+
+    chatFeed.innerHTML += `<div class="message"><span class="meta">System</span><span class="content" style="background: var(--danger); color: white;">Voice Disconnected</span></div>`;
+    chatFeed.scrollTop = chatFeed.scrollHeight;
+}
+btnLeaveVoice.addEventListener('click', () => {
+    endCall();
+    
+    socket.emit('webrtc-signal', {
+        room: currentRoom,
+        signalData: { type: 'hangup' }
+    });
+});
+
 // handling incoming signals
 socket.on('webrtc-signal', async (data) => {
     const { signalData } = data;
 
     if (signalData.type === 'offer') {
-        console.log("Received Offer, creating Answer...");
         await initWebRTC();
         
         await peerConnection.setRemoteDescription(new RTCSessionDescription(signalData.sdp));
@@ -186,6 +237,11 @@ socket.on('webrtc-signal', async (data) => {
             room: currentRoom,
             signalData: { type: 'answer', sdp: answer }
         });
+    }
+
+    if (signalData.type === 'hangup') {
+        console.log("Remote peer hung up.");
+        endCall();
     }
 
     // receive answer and set it
