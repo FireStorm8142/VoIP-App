@@ -98,14 +98,14 @@ socket.on('chat-message', (data) => {
         messageDiv.className = data.isSelf ? 'message self' : 'message';
     }
     messageDiv.innerHTML = `
-        <span class="meta">${data.sender === 'System' ? 'System' : data.sender.substring(0,5)} • ${data.time}</span>
+        <span class="meta">${data.sender === 'System' ? 'System' : data.sender} • ${data.time}</span>
         <span class="content">${data.text}</span>
     `;
     chatFeed.appendChild(messageDiv);
     chatFeed.scrollTop = chatFeed.scrollHeight;
 });
 
-
+//----------webRTC-section---------//
 let localStream;
 let peerConnection;
 
@@ -113,16 +113,12 @@ const rtcConfig = {
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
 };
 
-// DOM Elements for Audio
-const btnCall = document.getElementById('btn-join'); // We'll repurpose this as the "Call" button
+const btnCall = document.getElementById('btn-join');
 const audioContainer = document.getElementById('audio-container');
 
-// --- 1. SETUP THE PEER CONNECTION ---
 async function initWebRTC() {
-    // Create the connection object
     peerConnection = new RTCPeerConnection(rtcConfig);
 
-    // Listen for ICE candidates (our public IP routing info) and send them to the peer
     peerConnection.onicecandidate = (event) => {
         if (event.candidate && currentRoom) {
             socket.emit('webrtc-signal', {
@@ -132,26 +128,21 @@ async function initWebRTC() {
         }
     };
 
-    // Listen for the remote audio track arriving!
     peerConnection.ontrack = (event) => {
         console.log("Received remote audio stream!");
-        // Check if we already created an audio element for them
         if (!document.getElementById('remote-audio')) {
             const remoteAudio = document.createElement('audio');
             remoteAudio.id = 'remote-audio';
             remoteAudio.srcObject = event.streams[0];
-            remoteAudio.autoplay = true; // Crucial: tell it to play automatically
+            remoteAudio.autoplay = true;
             audioContainer.appendChild(remoteAudio);
-            
-            // Add a system message so we know it connected
             chatFeed.innerHTML += `<div class="message"><span class="meta">System</span><span class="content" style="background: var(--success); color: white;">Audio Connected!</span></div>`;
         }
     };
 
-    // Get our microphone
+    //Mic access
     try {
         localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-        // Add our audio tracks to the connection
         localStream.getTracks().forEach(track => {
             peerConnection.addTrack(track, localStream);
         });
@@ -162,33 +153,29 @@ async function initWebRTC() {
     }
 }
 
-// --- 2. START THE CALL (Create Offer) ---
+// Starting the call
 btnCall.addEventListener('click', async () => {
     if (!currentRoom) return alert("Join a room first!");
     
-    await initWebRTC(); // Setup mic and connection
+    await initWebRTC();
 
-    // Create the SDP Offer
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
 
-    // Send the offer to the other person in the room via our Node server
     socket.emit('webrtc-signal', {
         room: currentRoom,
         signalData: { type: 'offer', sdp: offer }
     });
-    
     console.log("Sent Call Offer");
 });
 
-// --- 3. HANDLE INCOMING WEBRTC SIGNALS ---
+// handling incoming signals
 socket.on('webrtc-signal', async (data) => {
     const { signalData } = data;
 
-    // If we receive an OFFER, we must create an ANSWER
     if (signalData.type === 'offer') {
         console.log("Received Offer, creating Answer...");
-        await initWebRTC(); // Setup our mic and connection to reply
+        await initWebRTC();
         
         await peerConnection.setRemoteDescription(new RTCSessionDescription(signalData.sdp));
         
@@ -201,13 +188,13 @@ socket.on('webrtc-signal', async (data) => {
         });
     }
 
-    // If we receive an ANSWER to our offer, set it
+    // receive answer and set it
     if (signalData.type === 'answer') {
         console.log("Received Answer, connection establishing...");
         await peerConnection.setRemoteDescription(new RTCSessionDescription(signalData.sdp));
     }
 
-    // If we receive an ICE CANDIDATE (routing info), add it
+    // receive ice canidate and set it
     if (signalData.type === 'ice-candidate') {
         try {
             await peerConnection.addIceCandidate(new RTCIceCandidate(signalData.candidate));
