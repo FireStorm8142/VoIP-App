@@ -144,7 +144,9 @@ async function initWebRTC() {
 
     //Mic access
     try {
-        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        if(!localStream){
+            localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        }
         localStream.getTracks().forEach(track => {
             peerConnection.addTrack(track, localStream);
         });
@@ -180,14 +182,12 @@ let isMuted = false;
 btnMute.addEventListener('click', () => {
     if (!localStream) return; 
 
-    const audioTrack = localStream.getAudioTracks()[0];
-    if (audioTrack) {
-        isMuted = !isMuted;
-        audioTrack.enabled = !isMuted;
-        btnMute.textContent = isMuted ? "Unmute Mic" : "Mute Mic";
-        btnMute.style.backgroundColor = isMuted ? "#ed4245" : "#4f545c"; 
+    isMuted = !isMuted;
+    localStream.getAudioTracks().forEach(track => track.enabled=!isMuted);
+    btnMute.textContent = isMuted ? "Unmute Mic" : "Mute Mic";
+    btnMute.style.backgroundColor = isMuted ? "#ed4245" : "#4f545c"; 
     }
-});
+);
 
 // Hanging up calls
 const btnLeaveVoice = document.getElementById('btn-leave');
@@ -209,7 +209,9 @@ function endCall() {
     btnMute.style.backgroundColor = "#4f545c";
     isMuted = false;
 
-    chatFeed.innerHTML += `<div class="message"><span class="meta">System</span><span class="content" style="background: var(--danger); color: white;">Voice Disconnected</span></div>`;
+    chatFeed.innerHTML += `<div class="message"><span class="meta">System</span>
+    <span class="content" style="background: var(--danger); color: white;">Voice Disconnected</span>
+    </div>`;
     chatFeed.scrollTop = chatFeed.scrollHeight;
 }
 btnLeaveVoice.addEventListener('click', () => {
