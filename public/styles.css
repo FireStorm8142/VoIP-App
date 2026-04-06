@@ -15,7 +15,7 @@ body {
     color: var(--text-main);
     height: 100vh;
     display: grid;
-    grid-template-columns: 240px 1fr;
+    grid-template-columns: 240px 1fr 0.25fr;
     grid-template-rows: 60px 1fr 80px;
 }
 
@@ -76,6 +76,15 @@ body {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+}
+
+.call-area{
+    
+}
+
+.call-members{
+    height: 10px;
+    width: 100%;
 }
 
 .message {

@@ -7,6 +7,8 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+let activeVoicMembers = {};
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 io.on('connection', (socket) => {
@@ -38,6 +40,15 @@ io.on('connection', (socket) => {
         });
     });
 
+    socket.on('get-voice-list', (roomCode) => {
+        socket.to(roomCode).emit('voice-list', {
+            voice: activeVoicMembers
+        })
+        socket.emit('voice-list', {
+            voice: activeVoicMembers
+        })
+    });
+
     socket.on('send-chat', (data) => {
         const { room, message } = data;
         const messageData = {
@@ -51,6 +62,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('join-voice', (roomCode) => {
+        activeVoicMembers = {...activeVoicMembers, [socket.username]: [socket.id]}
         socket.to(roomCode).emit('user-joined-voice', { 
             socketId: socket.id, 
             username: socket.username 

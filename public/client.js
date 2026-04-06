@@ -9,6 +9,7 @@ const roomInput = document.getElementById('room-code-input');
 const joinBtn = document.getElementById('btn-join-room');
 const roomList = document.getElementById('room-list');
 const chatFeed = document.getElementById('chat-feed');
+const callFeed = document.getElementById('call-feed');
 const msgInput = document.getElementById('msg-input');
 const disconnect = document.getElementById('btn-disconnect');
 
@@ -103,6 +104,19 @@ socket.on('chat-message', (data) => {
     `;
     chatFeed.appendChild(messageDiv);
     chatFeed.scrollTop = chatFeed.scrollHeight;
+
+    socket.on('voice-list', (data) => {
+        if (data.voice === null) return;
+        else{
+            (data.voice).forEach(user => {
+                const voiceDiv = document.createElement('div');
+                voiceDiv.className = 'call-members';
+                voiceDiv.innerText=[user.key];
+                callFeed.appendChild(voiceDiv);
+                callFeed.scrollTop = callFeed.scrollHeight;
+            });
+        }
+    })
 });
 
 //----------webRTC-section---------//
@@ -180,6 +194,7 @@ btnCall.addEventListener('click', async () => {
     btnLeaveVoice.style.display = 'inline-block';
 
     socket.emit('join-voice', currentRoom);
+    socket.emit('get-voice-list', currentRoom);
     console.log("Sent Ready for call Signal");
 });
 
