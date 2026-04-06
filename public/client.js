@@ -107,7 +107,7 @@ socket.on('chat-message', (data) => {
 
 //----------webRTC-section---------//
 let localStream;
-let peerConnection = {};
+let peerConnections = {};
 
 const rtcConfig = {
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
@@ -116,23 +116,28 @@ const rtcConfig = {
 const btnCall = document.getElementById('btn-join');
 const audioContainer = document.getElementById('audio-container');
 
-async function initWebRTC() {
-    peerConnection = new RTCPeerConnection(rtcConfig);
+// Function to initialise a connection with a user
+function initWebRTC(targetSocketId) {
+    const peerConnection = new RTCPeerConnection(rtcConfig);
+    peerConnections[targetSocketId] = peerConnection
 
+    //fires when browser receives ice canidates
     peerConnection.onicecandidate = (event) => {
-        if (event.candidate && currentRoom) {
+        if (event.candidate) {
             socket.emit('webrtc-signal', {
-                room: currentRoom,
+                targetSocketId: targetSocketId,
                 signalData: { type: 'ice-candidate', candidate: event.candidate }
             });
         }
     };
 
+    //fires when an audio stream is received by the browser
     peerConnection.ontrack = (event) => {
-        console.log("Received remote audio stream!");
-        if (!document.getElementById('remote-audio')) {
+        console.log(`Received remote audio stream from ${targetSocketId}`);
+        const audioId = `audio-${targetSocketId}`
+        if (!document.getElementById(audioId)) {
             const remoteAudio = document.createElement('audio');
-            remoteAudio.id = 'remote-audio';
+            remoteAudio.id = audioId;
             remoteAudio.srcObject = event.streams[0];
             remoteAudio.autoplay = true;
             audioContainer.appendChild(remoteAudio);
@@ -141,38 +146,41 @@ async function initWebRTC() {
             </div>`;
         }
     };
-
-    //Mic access
-    try {
-        if(!localStream){
-            localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-        }
+    if (localStream){
         localStream.getTracks().forEach(track => {
             peerConnection.addTrack(track, localStream);
         });
-        console.log("Microphone access granted.");
-    } catch (err) {
-        console.error("Error accessing microphone:", err);
-        alert("Could not access microphone.");
     }
+    return peerConnection;
+}
+
+// Mic access
+async function getMicStream(){
+    if(!localStream){
+        try {
+            localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+            console.log("Microphone access granted.");
+        } catch (err) {
+            console.error("Error accessing microphone:", err);
+            alert("Could not access microphone.");
+            return false;
+        }
+    }
+    return true;
 }
 
 // Starting the call
 btnCall.addEventListener('click', async () => {
     if (!currentRoom) return alert("Join a room first!");
     
-    await initWebRTC();
+    const micAccess = await getMicStream();
+    if (!micAccess) return;
 
     btnCall.style.display = 'none';
     btnLeaveVoice.style.display = 'inline-block';
-    const offer = await peerConnection.createOffer();
-    await peerConnection.setLocalDescription(offer);
 
-    socket.emit('webrtc-signal', {
-        room: currentRoom,
-        signalData: { type: 'offer', sdp: offer }
-    });
-    console.log("Sent Call Offer");
+    socket.emit('join-voice', currentRoom);
+    console.log("Sent Ready for call Signal");
 });
 
 // Muting calls
@@ -193,15 +201,20 @@ btnMute.addEventListener('click', () => {
 const btnLeaveVoice = document.getElementById('btn-leave');
 
 function endCall() {
-    if (peerConnection) {
-        peerConnection.close();
-        peerConnection = null;
+    for (const socketId in peerConnections){
+        peerConnections[socketId].close();
+        socket.emit('webrtc-signal', {
+            targetSocketId: socketId,
+            signalData: {type: 'hangup'}
+        });
+        delete peerConnections[socketId];
     }
 
-    if (localStream) {
+    if (localStream){
         localStream.getTracks().forEach(track => track.stop());
         localStream = null;
-    }
+        };
+
     audioContainer.innerHTML = '';
     btnCall.style.display = 'inline-block';
     btnLeaveVoice.style.display = 'none';
@@ -214,50 +227,71 @@ function endCall() {
     </div>`;
     chatFeed.scrollTop = chatFeed.scrollHeight;
 }
-btnLeaveVoice.addEventListener('click', () => {
-    endCall();
-    
-    socket.emit('webrtc-signal', {
-        room: currentRoom,
-        signalData: { type: 'hangup' }
-    });
+btnLeaveVoice.addEventListener('click', endCall)
+
+// Handling incoming voice connection signals
+socket.on('user-joined-voice', async (data) => {
+    const { socketId, username } = data;
+
+    if (localStream) {
+        console.log(`${username} is ready to join voice, creating offer`);
+        const peerConnection = initWebRTC(socketId);
+
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer); 
+
+        socket.emit('webrtc-signal', {
+            targetSocketId: socketId,
+            signalData: { type: 'offer', sdp: offer }
+        });
+    }
 });
 
-// handling incoming signals
+// Handling incoming webRTC Signals (ICE Canidates, offer, answer etc..)
 socket.on('webrtc-signal', async (data) => {
-    const { signalData } = data;
+    const { senderSocketId, signalData } = data;
 
-    if (signalData.type === 'offer') {
-        await initWebRTC();
-        
+    let peerConnection = peerConnections[senderSocketId];
+
+    if (signalData.type === 'offer'){
+        console.log(`Received offer from ${senderSocketId}`);
+        await getMicStream();
+
+        if (!peerConnection) peerConnection = initWebRTC(senderSocketId);
         await peerConnection.setRemoteDescription(new RTCSessionDescription(signalData.sdp));
-        
         const answer = await peerConnection.createAnswer();
         await peerConnection.setLocalDescription(answer);
 
         socket.emit('webrtc-signal', {
-            room: currentRoom,
-            signalData: { type: 'answer', sdp: answer }
+            targetSocketId: senderSocketId,
+            signalData: {type: 'answer', sdp: answer}
         });
+        btnCall.style.display='none';
+        btnLeaveVoice.style.display='inline-block';
     }
 
-    if (signalData.type === 'hangup') {
-        console.log("Remote peer hung up.");
-        endCall();
+    if (signalData.type === 'answer'){
+        console.log(`Received from ${senderSocketId}`);
+        if (peerConnection) await peerConnection.setRemoteDescription(new RTCSessionDescription(signalData.sdp));
     }
 
-    // receive answer and set it
-    if (signalData.type === 'answer') {
-        console.log("Received Answer, connection establishing...");
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(signalData.sdp));
-    }
-
-    // receive ice canidate and set it
-    if (signalData.type === 'ice-candidate') {
-        try {
-            await peerConnection.addIceCandidate(new RTCIceCandidate(signalData.candidate));
-        } catch (e) {
-            console.error("Error adding received ice candidate", e);
+    if (signalData.type === 'ice-candidate'){
+        if (peerConnection){
+            try{
+                await peerConnection.addIceCandidate(new RTCIceCandidate(signalData.candidate));
+            }catch (e){
+                console.error("Error adding ice canidate", e);
+            }
         }
+    }
+
+    if (signalData === 'hangup'){
+        console.log(`User ${senderSocketId}hung up.`);
+        if (peerConnection){
+            peerConnection.close();
+            delete peerConnections[senderSocketId];
+        }
+        const audioElement = document.getElementById(`audio-${senderSocketId}`);
+        if (audioElement) audioElement.remove();
     }
 });

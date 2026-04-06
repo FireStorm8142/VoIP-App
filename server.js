@@ -50,11 +50,17 @@ io.on('connection', (socket) => {
         socket.emit('chat-message', { ...messageData, isSelf: true });
     });
 
+    socket.on('join-voice', (roomCode) => {
+        socket.to(roomCode).emit('user-joined-voice', { 
+            socketId: socket.id, 
+            username: socket.username 
+        });
+    });
+
     socket.on('webrtc-signal', (data) => {
-        const { room, signalData } = data;
-        // Broadcast to the other person in the room
-        socket.to(room).emit('webrtc-signal', {
-            sender: socket.username,
+        const { targetSocketId, signalData } = data;
+        io.to(targetSocketId).emit('webrtc-signal', {
+            senderSocketId: socket.id,
             signalData: signalData
         });
     });
