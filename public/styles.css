@@ -79,13 +79,24 @@ body {
 }
 
 .call-area{
-    
+    grid-column: 3;
+    grid-row: 1 / 4;
+    background-color: var(--bg-panel);
+    padding: 1rem;
+    border-left: 1px solid #202225;
+    overflow-y: auto;
 }
 
 .call-members{
-    height: 10px;
-    width: 100%;
+    display: flex;
+    align-items: left;
+    padding: 4px;
+    margin-bottom: 2px;
+    border-radius: 4px;
+    cursor: pointer;
 }
+
+.call-members:hover { background-color: rgba(255,255,255,0.05); }
 
 .message {
     display: flex;

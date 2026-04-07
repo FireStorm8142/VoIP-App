@@ -58,6 +58,7 @@ joinBtn.addEventListener('click', () => {
     <span class="content" style="background:black">Joined Room: ${code}</span>
     </div>`;
     roomInput.value = '';
+    socket.emit('get-voice-list', currentRoom);
 });
 
 disconnect.addEventListener('click', () => {
@@ -104,19 +105,17 @@ socket.on('chat-message', (data) => {
     `;
     chatFeed.appendChild(messageDiv);
     chatFeed.scrollTop = chatFeed.scrollHeight;
+});
 
-    socket.on('voice-list', (data) => {
-        if (data.voice === null) return;
-        else{
-            (data.voice).forEach(user => {
-                const voiceDiv = document.createElement('div');
-                voiceDiv.className = 'call-members';
-                voiceDiv.innerText=[user.key];
-                callFeed.appendChild(voiceDiv);
-                callFeed.scrollTop = callFeed.scrollHeight;
-            });
-        }
-    })
+socket.on('voice-list', (data) => {
+    callFeed.innerHTML="";
+    callFeed.innerHTML=`<h3 style="margin-top:0; color: #96989d; text-transform: uppercase; font-size: 12px;">In Call</h3>`;
+    data.forEach(user => {
+        const voiceDiv = document.createElement('div');
+        voiceDiv.className = 'call-members';
+        voiceDiv.innerHTML=`<span>[${user}]</span>`;
+        callFeed.appendChild(voiceDiv);
+    });
 });
 
 //----------webRTC-section---------//
@@ -194,7 +193,6 @@ btnCall.addEventListener('click', async () => {
     btnLeaveVoice.style.display = 'inline-block';
 
     socket.emit('join-voice', currentRoom);
-    socket.emit('get-voice-list', currentRoom);
     console.log("Sent Ready for call Signal");
 });
 
@@ -216,6 +214,7 @@ btnMute.addEventListener('click', () => {
 const btnLeaveVoice = document.getElementById('btn-leave');
 
 function endCall() {
+    socket.emit('leave-voice', currentRoom);
     for (const socketId in peerConnections){
         peerConnections[socketId].close();
         socket.emit('webrtc-signal', {

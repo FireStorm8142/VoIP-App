@@ -41,12 +41,8 @@ io.on('connection', (socket) => {
     });
 
     socket.on('get-voice-list', (roomCode) => {
-        socket.to(roomCode).emit('voice-list', {
-            voice: activeVoicMembers
-        })
-        socket.emit('voice-list', {
-            voice: activeVoicMembers
-        })
+        const currentVoiceMembers = activeVoicMembers[roomCode] || [];
+        socket.emit('voice-list', currentVoiceMembers);
     });
 
     socket.on('send-chat', (data) => {
@@ -62,11 +58,22 @@ io.on('connection', (socket) => {
     });
 
     socket.on('join-voice', (roomCode) => {
-        activeVoicMembers = {...activeVoicMembers, [socket.username]: [socket.id]}
-        socket.to(roomCode).emit('user-joined-voice', { 
-            socketId: socket.id, 
-            username: socket.username 
+        if (!activeVoicMembers[roomCode]) activeVoicMembers[roomCode] = [];
+        if(!activeVoicMembers[roomCode].includes(socket.username)){
+            activeVoicMembers[roomCode].push(socket.username);
+        }
+        io.to(roomCode).emit('voice-list', activeVoicMembers[roomCode]);
+        socket.to(roomCode).emit('user-joined-voice', {
+            socketId: socket.id,
+            username: socket.username
         });
+    });
+
+    socket.on('leave-voice', (roomCode) => {
+        if(activeVoicMembers[roomCode]){
+            activeVoicMembers[roomCode] = activeVoicMembers[roomCode].filter(name => name !== socket.username);
+            io.to(roomCode).emit('voice-list', activeVoicMembers[roomCode]);
+        }
     });
 
     socket.on('webrtc-signal', (data) => {
